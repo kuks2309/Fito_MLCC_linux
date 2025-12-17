@@ -1,0 +1,858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1600</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MLCC Index Detector</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <!-- Column 1: Image List -->
+      <widget class="QGroupBox" name="groupBox_images">
+       <property name="maximumSize">
+        <size>
+         <width>200</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>Image List</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_left">
+        <item>
+         <widget class="QPushButton" name="btn_open_folder">
+          <property name="text">
+           <string>Open Folder</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="listWidget_images"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_image_count">
+          <property name="text">
+           <string>0 images</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <!-- Column 2: Image Viewer -->
+      <widget class="QWidget" name="widget_center">
+       <layout class="QVBoxLayout" name="verticalLayout_center">
+        <item>
+         <widget class="QLabel" name="label_image">
+          <property name="minimumSize">
+           <size>
+            <width>640</width>
+            <height>400</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string>background-color: #2b2b2b; color: white;</string>
+          </property>
+          <property name="text">
+           <string>Select a folder to load images</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_nav">
+          <item>
+           <widget class="QPushButton" name="btn_prev">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>&lt; Prev</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_AI_analyze">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #4CAF50; color: white; font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>AI Analyze</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_blob_analyze">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #2196F3; color: white; font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>OpenCV Blob</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_next">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Next &gt;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      <!-- Column 3: Parameters (TabWidget) -->
+      <widget class="QGroupBox" name="groupBox_controls">
+       <property name="maximumSize">
+        <size>
+         <width>250</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>Parameters</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_right">
+        <item>
+         <widget class="QTabWidget" name="tabWidget_params">
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <!-- AI Tab -->
+          <widget class="QWidget" name="tab_ai">
+           <attribute name="title">
+            <string>AI</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_ai">
+            <item>
+             <widget class="QLabel" name="label_conf">
+              <property name="text">
+               <string>Confidence Threshold:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSlider" name="slider_conf">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>99</number>
+              </property>
+              <property name="value">
+               <number>25</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_conf_value">
+              <property name="text">
+               <string>0.25</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_iou">
+              <property name="text">
+               <string>IOU Threshold:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSlider" name="slider_iou">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>99</number>
+              </property>
+              <property name="value">
+               <number>45</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_iou_value">
+              <property name="text">
+               <string>0.45</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_ai">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>10</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+          <!-- Halcon Blob Tab -->
+          <widget class="QWidget" name="tab_halcon_blob">
+           <attribute name="title">
+            <string>Halcon Blob</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_halcon_blob">
+            <item>
+             <widget class="QLabel" name="label_halcon_threshold">
+              <property name="text">
+               <string>Threshold:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSlider" name="slider_halcon_threshold">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>255</number>
+              </property>
+              <property name="value">
+               <number>40</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_halcon_threshold_value">
+              <property name="text">
+               <string>40</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_halcon_min_area">
+              <property name="text">
+               <string>Min Area:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_halcon_min_area">
+              <property name="minimum">
+               <number>100</number>
+              </property>
+              <property name="maximum">
+               <number>50000</number>
+              </property>
+              <property name="singleStep">
+               <number>500</number>
+              </property>
+              <property name="value">
+               <number>3000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_halcon_max_area">
+              <property name="text">
+               <string>Max Area:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_halcon_max_area">
+              <property name="minimum">
+               <number>1000</number>
+              </property>
+              <property name="maximum">
+               <number>500000</number>
+              </property>
+              <property name="singleStep">
+               <number>5000</number>
+              </property>
+              <property name="value">
+               <number>100000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_halcon_remove_cover">
+              <property name="text">
+               <string>Remove Cover</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_halcon_cover_size">
+              <property name="text">
+               <string>Cover Filter Size:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_halcon_cover_size">
+              <property name="minimum">
+               <number>50</number>
+              </property>
+              <property name="maximum">
+               <number>1000</number>
+              </property>
+              <property name="singleStep">
+               <number>50</number>
+              </property>
+              <property name="value">
+               <number>400</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_show_binary">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Binary</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_show_cover_removed">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Cover Removed</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_show_projection">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Projection</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_halcon_blob">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>10</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+          <!-- OpenCV Blob Tab -->
+          <widget class="QWidget" name="tab_opencv_blob">
+           <attribute name="title">
+            <string>OpenCV Blob</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_opencv_blob">
+            <item>
+             <widget class="QPushButton" name="btn_show_vertical_edge">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Vertical Edge</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_show_hough_lines">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Hough Lines (-15~+15°)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_opencv_show_projection">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Projection (Raw)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_opencv_detect_index">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="styleSheet">
+               <string>background-color: #FF9800; color: white; font-weight: bold;</string>
+              </property>
+              <property name="text">
+               <string>Detect Index</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_opencv_params">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>10</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_learn_section">
+              <property name="text">
+               <string>--- Learning ---</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_learn">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="styleSheet">
+               <string>background-color: #9C27B0; color: white; font-weight: bold;</string>
+              </property>
+              <property name="text">
+               <string>Learn from Folder</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_learn_status">
+              <property name="text">
+               <string>Not learned</string>
+              </property>
+              <property name="styleSheet">
+               <string>color: gray; font-style: italic;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QLabel" name="label_h_diff_threshold">
+                <property name="text">
+                 <string>H Diff Thr:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_h_diff_threshold">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>200</number>
+                </property>
+                <property name="value">
+                 <number>50</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_index_params">
+              <property name="text">
+               <string>--- Index Parameters ---</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QLabel" name="label_min_index_height">
+                <property name="text">
+                 <string>Min Height:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_min_index_height">
+                <property name="minimum">
+                 <number>10</number>
+                </property>
+                <property name="maximum">
+                 <number>500</number>
+                </property>
+                <property name="value">
+                 <number>50</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QLabel" name="label_max_index_height">
+                <property name="text">
+                 <string>Max Height:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_max_index_height">
+                <property name="minimum">
+                 <number>10</number>
+                </property>
+                <property name="maximum">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>300</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout">
+              <item>
+               <widget class="QLabel" name="label_index_pitch">
+                <property name="text">
+                 <string>Pitch (0=off):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_index_pitch">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_opencv_blob">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>10</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_save_settings">
+          <property name="text">
+           <string>Save Settings</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <!-- Column 4: Info Panel -->
+      <widget class="QGroupBox" name="groupBox_info">
+       <property name="maximumSize">
+        <size>
+         <width>200</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>Info</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_info_panel">
+        <!-- Display Options -->
+        <item>
+         <widget class="QGroupBox" name="groupBox_display">
+          <property name="title">
+           <string>Display Options</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_display">
+           <item>
+            <widget class="QCheckBox" name="checkBox_boxes">
+             <property name="text">
+              <string>Show Bounding Boxes</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_masks">
+             <property name="text">
+              <string>Show Masks</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_labels">
+             <property name="text">
+              <string>Show Labels</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_cutting_line">
+             <property name="text">
+              <string>Show Cutting Line</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkBox_random_rotate">
+             <property name="text">
+              <string>Random Rotate (-20~+20°)</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <!-- Auto Detect Mode -->
+        <item>
+         <widget class="QGroupBox" name="groupBox_auto_detect">
+          <property name="title">
+           <string>Auto Detect Mode</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_auto">
+           <item>
+            <widget class="QRadioButton" name="radio_no_auto">
+             <property name="text">
+              <string>None (Manual)</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radio_auto_ai">
+             <property name="styleSheet">
+              <string>color: #4CAF50; font-weight: bold;</string>
+             </property>
+             <property name="text">
+              <string>AI Analyze</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radio_auto_blob">
+             <property name="styleSheet">
+              <string>color: #2196F3; font-weight: bold;</string>
+             </property>
+             <property name="text">
+              <string>OpenCV Blob</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radio_auto_halcon">
+             <property name="styleSheet">
+              <string>color: #FF9800; font-weight: bold;</string>
+             </property>
+             <property name="text">
+              <string>Halcon Blob</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <!-- Image Info -->
+        <item>
+         <widget class="QGroupBox" name="groupBox_image_info">
+          <property name="title">
+           <string>Image Info</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_info">
+           <item>
+            <widget class="QLabel" name="label_filename">
+             <property name="text">
+              <string>File: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_resolution">
+             <property name="text">
+              <string>Resolution: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_depth">
+             <property name="text">
+              <string>Depth: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_data_size">
+             <property name="text">
+              <string>Data Size: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_file_size">
+             <property name="text">
+              <string>File Size: -</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <!-- Detection Results -->
+        <item>
+         <widget class="QGroupBox" name="groupBox_results">
+          <property name="title">
+           <string>Detection Results</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_results">
+           <item>
+            <widget class="QLabel" name="label_detections">
+             <property name="text">
+              <string>Detections: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_cutting_line">
+             <property name="text">
+              <string>Cutting Line: -</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_inference_time">
+             <property name="text">
+              <string>Inference: -</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <!-- Spacer and Save Button -->
+        <item>
+         <spacer name="verticalSpacer_info">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_save">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Save Result</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

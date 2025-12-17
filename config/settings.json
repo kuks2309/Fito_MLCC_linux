@@ -1,0 +1,11 @@
+{
+  "conf_threshold": 0.74,
+  "iou_threshold": 0.45,
+  "show_boxes": false,
+  "show_masks": true,
+  "show_labels": false,
+  "last_image_dir": "/home/amap/Project/FITO2026/MLCC_Index/images/Side_Left",
+  "show_cutting_line": true,
+  "auto_detect": true,
+  "auto_detect_mode": 2
+}

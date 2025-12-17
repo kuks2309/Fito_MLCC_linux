@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""
+Hailo-8 YOLOv8-seg 추론 모듈
+MLCC Index 검출용 독립 inference 클래스
+"""
+import numpy as np
+import cv2
+import os
+
+from hailo_platform import HEF, VDevice, FormatType
+from hailo_platform.pyhailort.pyhailort import InferVStreams, InputVStreamParams, OutputVStreamParams
+
+# 기본 설정
+DEFAULT_HEF_PATH = "/home/amap/Project/FITO2026/MLCC_Index/Hailo_H8/fito_best.hef"
+INPUT_SHAPE = (640, 544)  # (height, width)
+
+# 클래스 정보
+CLASS_NAMES = ['index0']
+COLORS = [(0, 255, 0)]
+
+
+class HailoInference:
+    """Hailo-8 YOLOv8-seg 추론 클래스"""
+
+    def __init__(self, hef_path: str = DEFAULT_HEF_PATH,
+                 input_shape: tuple = INPUT_SHAPE,
+                 conf_threshold: float = 0.25,
+                 iou_threshold: float = 0.45):
+        """
+        Args:
+            hef_path: HEF 모델 파일 경로
+            input_shape: 입력 이미지 크기 (height, width)
+            conf_threshold: Confidence threshold
+            iou_threshold: IOU threshold for NMS
+        """
+        self.hef_path = hef_path
+        self.input_shape = input_shape
+        self.conf_threshold = conf_threshold
+        self.iou_threshold = iou_threshold
+
+        self.hef = None
+        self.target = None
+        self.network_group = None
+        self.infer_pipeline = None
+        self.input_vstream_infos = None
+        self.initialized = False
+
+    def initialize(self) -> bool:
+        """HEF 로드 및 디바이스 초기화"""
+        try:
+            if not os.path.exists(self.hef_path):
+                print(f"Error: HEF file not found: {self.hef_path}")
+                return False
+
+            print(f"Loading HEF: {self.hef_path}")
+            self.hef = HEF(self.hef_path)
+            self.input_vstream_infos = self.hef.get_input_vstream_infos()
+
+            # VDevice를 context manager로 사용하지 않고 직접 관리
+            self.target = VDevice()
+            self.network_group = self.target.configure(self.hef)[0]
+
+            self.input_params = InputVStreamParams.make(self.network_group, format_type=FormatType.UINT8)
+            self.output_params = OutputVStreamParams.make(self.network_group, format_type=FormatType.FLOAT32)
+
+            self.initialized = True
+            print("Hailo-8 initialized successfully")
+            return True
+
+        except Exception as e:
+            print(f"Initialization failed: {str(e)}")
+            return False
+
+    def cleanup(self):
+        """리소스 정리"""
+        self.initialized = False
+        if self.target:
+            try:
+                self.target.release()
+            except:
+                pass
+        print("Hailo-8 cleanup done")
+
+    def set_conf_threshold(self, value: float):
+        """Confidence threshold 설정"""
+        self.conf_threshold = value
+
+    def set_iou_threshold(self, value: float):
+        """IOU threshold 설정"""
+        self.iou_threshold = value
+
+    def _sigmoid(self, x):
+        return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+
+    def _preprocess(self, image: np.ndarray) -> np.ndarray:
+        """이미지 전처리"""
+        img_resized = cv2.resize(image, (self.input_shape[1], self.input_shape[0]))
+        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        return np.expand_dims(img_rgb, axis=0).astype(np.uint8)
+
+    def _process_output(self, outputs):
+        """YOLOv8-seg 출력 디코딩"""
+        model_prefix = None
+        for key in outputs.keys():
+            if 'conv44' in key:
+                model_prefix = key.rsplit('/conv44', 1)[0]
+                break
+
+        if model_prefix is None:
+            return [], [], [], [], None
+
+        scales = [
+            {'bbox': outputs[f'{model_prefix}/conv44'], 'cls': outputs[f'{model_prefix}/conv45'],
+             'mask': outputs[f'{model_prefix}/conv46'], 'stride': 8},
+            {'bbox': outputs[f'{model_prefix}/conv60'], 'cls': outputs[f'{model_prefix}/conv61'],
+             'mask': outputs[f'{model_prefix}/conv62'], 'stride': 16},
+            {'bbox': outputs[f'{model_prefix}/conv73'], 'cls': outputs[f'{model_prefix}/conv74'],
+             'mask': outputs[f'{model_prefix}/conv75'], 'stride': 32}
+        ]
+
+        proto = outputs[f'{model_prefix}/conv48'][0]
+
+        all_boxes, all_scores, all_class_ids, all_mask_coeffs = [], [], [], []
+
+        for scale in scales:
+            bbox_out = scale['bbox'][0]
+            cls_out = scale['cls'][0]
+            mask_out = scale['mask'][0]
+            stride = scale['stride']
+
+            cls_probs = cls_out
+            max_cls_probs = np.max(cls_probs, axis=-1)
+            class_ids = np.argmax(cls_probs, axis=-1)
+            mask = max_cls_probs > self.conf_threshold
+
+            if not np.any(mask):
+                continue
+
+            y_indices, x_indices = np.where(mask)
+
+            for y, x in zip(y_indices, x_indices):
+                score = max_cls_probs[y, x]
+                class_id = class_ids[y, x]
+                bbox_raw = bbox_out[y, x]
+
+                # DFL decoding
+                dfl_vals = []
+                for i in range(4):
+                    vals = bbox_raw[i*16:(i+1)*16]
+                    vals = np.exp(vals - np.max(vals))
+                    vals = vals / vals.sum()
+                    dfl_vals.append(np.sum(vals * np.arange(16)))
+
+                cx = (x + 0.5) * stride
+                cy = (y + 0.5) * stride
+                x1 = cx - dfl_vals[0] * stride
+                y1 = cy - dfl_vals[1] * stride
+                x2 = cx + dfl_vals[2] * stride
+                y2 = cy + dfl_vals[3] * stride
+
+                all_boxes.append([x1, y1, x2 - x1, y2 - y1])
+                all_scores.append(float(score))
+                all_class_ids.append(int(class_id))
+                all_mask_coeffs.append(mask_out[y, x])
+
+        if len(all_boxes) == 0:
+            return [], [], [], [], proto
+
+        # NMS
+        boxes = np.array(all_boxes)
+        scores = np.array(all_scores)
+        indices = cv2.dnn.NMSBoxes(boxes.tolist(), scores.tolist(),
+                                    self.conf_threshold, self.iou_threshold)
+        indices = indices.flatten() if len(indices) > 0 else []
+
+        final_boxes, final_scores, final_class_ids, final_mask_coeffs = [], [], [], []
+        for i in indices:
+            x, y, w, h = boxes[i]
+            final_boxes.append([x, y, x + w, y + h])
+            final_scores.append(scores[i])
+            final_class_ids.append(all_class_ids[i])
+            final_mask_coeffs.append(all_mask_coeffs[i])
+
+        return final_boxes, final_scores, final_class_ids, final_mask_coeffs, proto
+
+    def _generate_mask(self, proto, mask_coeff, box, img_shape):
+        """세그멘테이션 마스크 생성"""
+        mask = np.tensordot(proto, mask_coeff, axes=([2], [0]))
+        mask = self._sigmoid(mask)
+        mask = cv2.resize(mask, (self.input_shape[1], self.input_shape[0]))
+
+        x1, y1, x2, y2 = [int(c) for c in box]
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(self.input_shape[1], x2), min(self.input_shape[0], y2)
+
+        box_mask = np.zeros((self.input_shape[0], self.input_shape[1]), dtype=np.float32)
+        box_mask[y1:y2, x1:x2] = mask[y1:y2, x1:x2]
+        box_mask = cv2.resize(box_mask, (img_shape[1], img_shape[0]))
+
+        return box_mask > 0.5
+
+    def infer(self, image: np.ndarray) -> dict:
+        """
+        단일 이미지 추론
+
+        Args:
+            image: BGR 이미지 (numpy array)
+
+        Returns:
+            dict: {
+                'boxes': list of [x1, y1, x2, y2],
+                'scores': list of float,
+                'class_ids': list of int,
+                'masks': list of binary masks,
+                'original_size': (height, width),
+                'count': int
+            }
+        """
+        if not self.initialized:
+            print("Error: Engine not initialized")
+            return None
+
+        try:
+            original_size = image.shape[:2]
+            input_data = self._preprocess(image)
+
+            # 매 추론마다 context manager 사용
+            with InferVStreams(self.network_group, self.input_params, self.output_params) as infer_pipeline:
+                with self.network_group.activate():
+                    input_dict = {self.input_vstream_infos[0].name: input_data}
+                    output_dict = infer_pipeline.infer(input_dict)
+
+            boxes, scores, class_ids, mask_coeffs, proto = self._process_output(output_dict)
+
+            # Generate masks
+            masks = []
+            for box, mask_coeff in zip(boxes, mask_coeffs):
+                mask = self._generate_mask(proto, mask_coeff, box, original_size)
+                masks.append(mask)
+
+            return {
+                'boxes': boxes,
+                'scores': scores,
+                'class_ids': class_ids,
+                'masks': masks,
+                'original_size': original_size,
+                'count': len(boxes)
+            }
+
+        except Exception as e:
+            print(f"Inference failed: {str(e)}")
+            return None
+
+    def draw_results(self, image: np.ndarray, result: dict,
+                     show_boxes: bool = True,
+                     show_masks: bool = True,
+                     show_labels: bool = True,
+                     show_cutting_line: bool = False,
+                     cutting_y: int = None) -> np.ndarray:
+        """
+        결과 시각화
+
+        Args:
+            image: 원본 이미지
+            result: infer() 결과
+            show_boxes: 바운딩 박스 표시 여부
+            show_masks: 세그멘테이션 마스크 표시 여부
+            show_labels: 라벨 표시 여부
+            show_cutting_line: 커팅 라인 표시 여부
+            cutting_y: 커팅 라인 Y 좌표
+
+        Returns:
+            결과 이미지
+        """
+        if result is None:
+            return image
+
+        img = image.copy()
+        boxes = result['boxes']
+        scores = result['scores']
+        class_ids = result['class_ids']
+        masks = result['masks']
+        original_size = result['original_size']
+
+        scale_x = original_size[1] / self.input_shape[1]
+        scale_y = original_size[0] / self.input_shape[0]
+
+        for box, score, class_id, mask in zip(boxes, scores, class_ids, masks):
+            x1 = int(box[0] * scale_x)
+            y1 = int(box[1] * scale_y)
+            x2 = int(box[2] * scale_x)
+            y2 = int(box[3] * scale_y)
+
+            color = COLORS[class_id % len(COLORS)]
+
+            # 마스크 표시
+            if show_masks and mask is not None:
+                colored_mask = np.zeros_like(img)
+                colored_mask[mask] = color
+                img = cv2.addWeighted(img, 1, colored_mask, 0.4, 0)
+
+            # 바운딩 박스 표시
+            if show_boxes:
+                cv2.rectangle(img, (x1, y1), (x2, y2), color, 8)
+
+            # 라벨 표시
+            if show_labels:
+                class_name = CLASS_NAMES[class_id] if class_id < len(CLASS_NAMES) else f"class_{class_id}"
+                label = f"{class_name}: {score:.2f}"
+                cv2.putText(img, label, (x1, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 3.2, color, 8)
+
+        # 커팅 라인 표시 (각 검출마다 개별 라인)
+        if show_cutting_line and cutting_y is not None:
+            h, w = img.shape[:2]
+            if isinstance(cutting_y, list):
+                # 여러 개의 커팅 라인
+                for i, cy in enumerate(cutting_y):
+                    cv2.line(img, (0, cy), (w, cy), (0, 0, 255), 4)
+                    cv2.putText(img, f"Cut[{i}] Y={cy}", (20, cy - 20),
+                               cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
+            else:
+                # 단일 커팅 라인 (하위 호환)
+                cv2.line(img, (0, cutting_y), (w, cutting_y), (0, 0, 255), 4)
+                cv2.putText(img, f"Cutting Y={cutting_y}", (20, cutting_y - 20),
+                           cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
+
+        return img
+
+
+# 테스트용
+if __name__ == "__main__":
+    import glob
+
+    # 테스트 이미지 경로
+    TEST_IMAGE_DIR = "/home/amap/Project/FITO2026/MLCC_Index/images/Side_Left"
+
+    # Inference 객체 생성 및 초기화
+    inference = HailoInference()
+    if not inference.initialize():
+        print("Failed to initialize")
+        exit(1)
+
+    # 이미지 찾기
+    image_files = glob.glob(os.path.join(TEST_IMAGE_DIR, "*.bmp"))
+    if not image_files:
+        print(f"No images found in {TEST_IMAGE_DIR}")
+        inference.cleanup()
+        exit(1)
+
+    print(f"Found {len(image_files)} images")
+
+    # 첫 번째 이미지로 테스트
+    test_image = cv2.imread(image_files[0])
+    if test_image is not None:
+        result = inference.infer(test_image)
+        if result:
+            print(f"Detected: {result['count']} objects")
+            for i, (box, score) in enumerate(zip(result['boxes'], result['scores'])):
+                print(f"  [{i}] box={box}, score={score:.3f}")
+
+            # 결과 이미지 표시
+            result_img = inference.draw_results(test_image, result)
+            cv2.namedWindow("Result", cv2.WINDOW_NORMAL)
+            cv2.imshow("Result", result_img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+    inference.cleanup()
